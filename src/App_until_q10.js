@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback ,useRef} from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import web3 from './web3';
 import lottery from './lottery';
 import { Button, Container, Row, Col, Alert, FormControl, InputGroup,Modal  } from 'react-bootstrap';
@@ -15,12 +15,6 @@ function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [winner, setWinner] = useState('');
   const [votingEnded, setVotingEnded] = useState(false);
-  // const [isDestroyed, setIsDestroyed] = useState(false);
-  let isDestroyedDirectAssignment = true;
-  
-  const isDestroyedRef = useRef(false); // Ref to track isDestroyed variable
-
-
 
 
   const loadBlockchainData = useCallback(async () => {
@@ -35,8 +29,7 @@ function App() {
     if (contractOwner.toLowerCase() && contractOwner.toLowerCase() !== '0x0000000000000000000000000000000000000000') {
       setOwner(contractOwner.toLowerCase());
     } else {
-      //setOwner(accounts[0].toLowerCase());
-      setOwner('0x153dfef4355E823dCB0FCc76Efe942BefCa86477');
+      setOwner(accounts[0].toLowerCase());
     }
    // Set contract owner or fallback to the connected account
 
@@ -50,7 +43,7 @@ function App() {
 
     const remaining = await lottery.methods.getRemainingVotes(accounts[0]).call();
     console.log(remaining)
-    setRemainingVotes(Number(remaining));
+    setRemainingVotes(Number(10));
 
     const pastWinners = await lottery.methods.getWinners().call();
     setWinners(pastWinners);
@@ -58,10 +51,6 @@ function App() {
     const votingEndedState = await lottery.methods.votingEnded().call();
     setVotingEnded(votingEndedState);
 
-    var isDestroyedState = await lottery.methods.isDestroyed().call();
-    isDestroyedRef.current =isDestroyedState;
-    console.log(isDestroyedRef.current +"----------------" + isDestroyedState);
-    
 
     const currentWinner = await lottery.methods.winner().call();
     setWinner(currentWinner);
@@ -175,17 +164,16 @@ function App() {
     return (
       <div>
         <h3>Votes:</h3>
-        <p style={winner === 'Elon' && votingEnded  ? { fontWeight: 'bold' } : {}}>Elon: {votes.Elon}</p>
-        <p style={winner === 'Mark' && votingEnded  ? { fontWeight: 'bold' } : {}}>Mark: {votes.Mark}</p>
-        <p style={winner === 'Sam' && votingEnded ? { fontWeight: 'bold' } : {}}>Sam: {votes.Sam}</p>
-        {account === owner ? null :  <p>Remaining Votes: {remainingVotes}</p>}
-
+        <p style={winner === 'Elon' ? { fontWeight: 'bold' } : {}}>Elon: {votes.Elon}</p>
+        <p style={winner === 'Mark' ? { fontWeight: 'bold' } : {}}>Mark: {votes.Mark}</p>
+        <p style={winner === 'Sam' ? { fontWeight: 'bold' } : {}}>Sam: {votes.Sam}</p>
+        <p>Remaining Votes: {remainingVotes}</p>
       </div>
     );
   };
 
   const renderVoteButton = (proposal) => (
-    <Button variant="primary" onClick={() => vote(proposal)} disabled={remainingVotes === 0 || account === owner || votingEnded || isDestroyedRef.current}>
+    <Button variant="primary" onClick={() => vote(proposal)} disabled={remainingVotes === 0 || account === owner}>
       Vote for {proposal}
     </Button>
   );
@@ -194,12 +182,14 @@ function App() {
     if (winners.length === 0) {
       return <p>No completed votes yet.</p>;
     }
+    winners.forEach((winner, index) => {
+      console.log(`Winner ${index + 1}:`);
+      console.log(`Round: ${winner.round}`);
+      console.log(`Proposal: ${winner.proposal}`);
+      console.log(`Votes: ${winner.votes}`);
+    });
 
-    const sortedWinners = [...winners].sort((a, b) => Number(b.votes) - Number(a.votes));
-
-
-
-    return sortedWinners.slice(0, 10).map((winner, index) => {
+    return winners.slice(0, 10).map((winner, index) => {
       // Ensure BigInt values are converted to Number
       const round = Number(winner.round);
       const votes = Number(winner.votes);
@@ -212,8 +202,6 @@ function App() {
     //   <p key={index}>Round {winner.round}: {winner.proposal} with {winner.votes} votes</p>
     // ));
   };
-
-  
 
   return (
     <Container>
@@ -233,14 +221,13 @@ function App() {
       </Row>
       <Row className="my-3">
         <Col>
-        
-          <Button style={{ marginRight: '12px', marginBottom: '12px' }} variant="secondary" onClick={declareWinner} disabled={account !== owner || isDestroyedRef.current}>
+          <Button variant="secondary" onClick={declareWinner} disabled={account !== owner}>
             Declare Winner
           </Button>
-          <Button style={{ marginRight: '12px', marginBottom: '12px' }} variant="secondary" onClick={withdrawFunds} disabled={account !== owner || isDestroyedRef.current }>
+          <Button variant="secondary" onClick={withdrawFunds} disabled={account !== owner}>
             Withdraw
           </Button>
-          <Button style={{ marginBottom: '12px' }} variant="secondary" onClick={resetVoting} disabled={account !== owner || !votingEnded || isDestroyedRef.current}>
+          <Button variant="secondary" onClick={resetVoting} disabled={account !== owner}>
             Reset
           </Button>
           <InputGroup className="mb-3">
@@ -251,11 +238,11 @@ function App() {
               value={newOwner}
               onChange={(e) => setNewOwner(e.target.value)}
             />
-            <Button variant="secondary" onClick={changeOwner} disabled={account !== owner || !newOwner || !votingEnded || isDestroyedRef.current}>
+            <Button variant="secondary" onClick={changeOwner} disabled={account !== owner || !newOwner}>
               Change Owner
             </Button>
           </InputGroup>
-          <Button variant="danger" onClick={destroyContract} disabled={account !== owner || isDestroyedRef.current}>
+          <Button variant="danger" onClick={destroyContract} disabled={account !== owner}>
             Destroy
           </Button>
         </Col>
@@ -263,7 +250,11 @@ function App() {
       <Row>
         <Col>
         {renderVotes()}
-         
+          {/* <h3>Votes:</h3>
+          <p>Elon: {votes.Elon}</p>
+          <p>Mark: {votes.Mark}</p>
+          <p>Sam: {votes.Sam}</p>
+          <p>Remaining Votes: {remainingVotes}</p> */}
         </Col>
       </Row>
       <Row className="my-3">
